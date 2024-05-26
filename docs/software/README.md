@@ -161,3 +161,154 @@ SET UNIQUE_CHECKS=@OLD_UNIQUE_CHECKS;
 
 - RESTfull сервіс для управління даними
 
+### ApplicationDbContex для зв'язку з базою даних
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using WebApplication1.Models;
+
+namespace WebApplication1.Data;
+
+public class ApplicationDbContext : DbContext
+{
+    public ApplicationDbContext(DbContextOptions<ApplicationDbContext> options) : base(options)
+    {
+
+    }
+
+    public DbSet<Users> Users { get; set; }
+    public DbSet<Roles> Roles { get; set; }
+}
+```
+
+### Моделі
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace WebApplication1.Models;
+
+public class Users
+{
+    public Users(string email, string password)
+    {
+        this.email = email;
+        this.password = password;
+    }
+    
+    [Key]
+    public int id { get; set; }
+    [Required]
+    public string password { get; set; }
+    [Required]
+    public string email { get; set; }
+    public int role_id { get; set; }
+}
+```
+Загальна модель користувачів
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace WebApplication1.Models;
+
+public class UserLogin
+{
+    [Required]
+    public string email { get; set; }
+    [Required]
+    public string password { get; set; }
+}
+```
+Модель для авторизації
+
+```csharp
+using System.ComponentModel.DataAnnotations;
+
+namespace WebApplication1.Models;
+
+public class Roles
+{
+    [Key]
+    public int id { get; set; }
+
+    public string name { get; set; }
+    
+    public string description { get; set; }
+
+}
+```
+
+Модель ролей
+
+### Валідація введених даних
+
+```csharp
+using FluentValidation;
+using WebApplication1.Models;
+
+namespace WebApplication1.Validation;
+
+public class LoginValidator:AbstractValidator<Users>
+{
+    public LoginValidator()
+    {
+        RuleFor(users => users.email).NotEmpty().MaximumLength(30);
+        RuleFor(users => users.password).NotEmpty().MaximumLength(50);
+    }
+}
+```
+
+### Конфігураційний файл
+
+```csharp
+{
+  "ConnectionStrings": {
+    "DefaultConnection": "Server=localhost;port=3306;Database=mcas;User =root;Password=1337;"
+  },
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*"
+}
+
+```
+Цей файл потрібен для звернення до бази через ConnectionStrings
+
+### Основний файл в якому відбуваються всі налаштування API
+
+```csharp
+using Microsoft.EntityFrameworkCore;
+using WebApplication1.Data;
+
+var builder = WebApplication.CreateBuilder(args);
+
+builder.Services.AddDbContext<ApplicationDbContext>(options =>
+    options.UseMySql(
+        builder.Configuration.GetConnectionString("DefaultConnection"), 
+        new MySqlServerVersion(new Version(8, 0, 37))
+    ));
+
+builder.Services.AddControllers();
+
+builder.Services.AddEndpointsApiExplorer();
+builder.Services.AddSwaggerGen();
+
+var app = builder.Build();
+
+// Configure the HTTP request pipeline.
+if (app.Environment.IsDevelopment())
+{
+    app.UseSwagger();
+    app.UseSwaggerUI();
+}
+
+app.UseHttpsRedirection();
+app.MapControllers();
+
+app.Run();
+
+```
